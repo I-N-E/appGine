@@ -68,7 +68,7 @@ def loginPage(request): ## Login Gine
         if user is not None:
             login(request=request,user=user)
             del password,user,username
-            return redirect('block')
+            return redirect('profile')
         else:
             del username,password,user
             message = messages.error(request,'Please check username or password.') ; del message
@@ -111,8 +111,12 @@ def profilePage(request):  ## Profile User
             user_ = User.objects.get(username=request.user)
             formpost = FormPost(request.POST)
             if formpost.is_valid():
-                post = BlockPost.objects.create(user_post=user_,title=request.POST['title'],post=request.POST['post'])
-                post.save()
+                if request.FILES.get('picture_post') is not None:
+                    post = BlockPost.objects.create(user_post=user_,title=request.POST['title'],post=request.POST['post'],picture_post=request.FILES['picture_post'])
+                    post.save()
+                else:
+                    post = BlockPost.objects.create(user_post=user_,title=request.POST['title'],post=request.POST['post'])
+                    post.save()
                 messages.success(request,'Post Content Successfully')
                 del user_,formpost,post
                 return redirect('profile')
@@ -131,7 +135,7 @@ def profilePage(request):  ## Profile User
         form3 = FormPost()
         post_manage = BlockPost.objects.filter(user_post=user)
         post_value = BlockPost.objects.filter(user_post=user).values()
-        count_comment =  CommentPost.objects.all().values()
+        count_comment =  CommentPost.objects.all().values('position_post_id')
         contaxt = {'form':form,'img':img,'form2':form2,'form3':form3,'manage':post_manage,'value':post_value,'cmt':count_comment}
         del user_id,data,form,img,form2,form3,post_manage,post_value,user,count_comment
         return render(request,'profile_page.html',contaxt)
@@ -148,10 +152,10 @@ def blockPage(request):  ## Block Public
             return redirect('block')
     else:
         post = BlockPost.objects.all().values()
-        name_user = User.objects.all().values()
-        img = DataUser.objects.all().values()
+        name_user = User.objects.all().values('id','username')
+        img = DataUser.objects.all().values('user_id','picture')
         user = User.objects.get(username=request.user).username
-        count_comment =  CommentPost.objects.all().values()
+        count_comment =  CommentPost.objects.all().values('position_post_id')
         contaxt = {'post':post,'user':user,'name':name_user,'img':img,'cmtb':count_comment}
         del post,user,name_user,img,count_comment
         return render(request,'block_page.html',contaxt)
@@ -165,11 +169,17 @@ def manage(request,pk):
                 new_edit = BlockPost.objects.get(id=pk)
                 new_edit.title = request.POST['title']
                 new_edit.post = request.POST['post']
+                if request.FILES.get('picture_post') is not None:
+                    new_edit.picture_post.delete()
+                    new_edit.picture_post = request.FILES.get('picture_post')
+                else:
+                    new_edit.picture_post = BlockPost.objects.get(id=1).picture_post
                 new_edit.save()
                 del new_edit,edit,pk
+                messages.success(request,'Update Post Complete')
                 return redirect('profile')
             else:
-                return redirect(f'manage/{pk}') 
+                return redirect(reverse('manage',kwargs={'pk':pk})) 
         if request.POST.get('btn-delete') is not None:
             delete_post = BlockPost.objects.get(id=pk)
             delete_post.delete()
@@ -199,7 +209,10 @@ def joinPost(request,pk):
             else:
                 user = User.objects.get(id=request.user.id)
                 post_position = BlockPost.objects.get(id=pk)
-                comment_post = CommentPost.objects.create(comment=request.POST['comment'],position_post=post_position,user_comment=user)
+                if request.FILES.get('btn-pic_j') is not None:
+                    comment_post = CommentPost.objects.create(comment=request.POST['comment'],position_post=post_position,user_comment=user,picture_comment=request.FILES['btn-pic_j'])
+                else:
+                    comment_post = CommentPost.objects.create(comment=request.POST['comment'],position_post=post_position,user_comment=user)
                 comment_post.save()
                 del user,post_position,comment_post
                 messages.success(request,'comment post successfully')
@@ -210,11 +223,45 @@ def joinPost(request,pk):
         post_id = BlockPost.objects.get(id=pk)
         img_profile = DataUser.objects.get(user_id=post_id.user_post_id).picture.url
         data_comment = CommentPost.objects.filter(position_post_id=pk).values()
-        usercomment = DataUser.objects.all().values()
-        nameuser = User.objects.all().values()
-        contaxt = {'pk':pk,'post':post_id,'img':img_profile,'user':post_id.user_post,'value_comment':data_comment,'user_c':usercomment,'name':nameuser}
+        usercomment = DataUser.objects.all().values('user_id','picture')
+        nameuser = User.objects.all().values('id','username')
+        contaxt = {'pk':pk,'post':post_id,'img':img_profile,'user':post_id.user_post,'value_comment':data_comment,'user_c':usercomment,'name':nameuser,'check_user':request.user}
         del post_id,img_profile,data_comment,usercomment,nameuser
         return render(request,'join_post.html',contaxt)
+
+@login_required(login_url='login') ## manage comment
+def editComment(request,pk):
+    if request.method == 'POST':
+        if request.POST.get('btn-edit_cmt') is not None:
+            edit_comment = CommentPost.objects.get(id=pk)
+            if request.FILES.get('btn_pic_cmt') is not None:
+                edit_comment.picture_comment.delete()
+                edit_comment.picture_comment = request.FILES['btn_pic_cmt']
+            else:
+                pass
+            edit_comment.comment = request.POST['edit_comment']
+            edit_comment.save()
+            del edit_comment
+            return redirect(reverse('join',kwargs={'pk':CommentPost.objects.get(id=pk).position_post_id}))
+        if request.POST.get('btn-delete_cmt') is not None:
+            delete_comment = CommentPost.objects.get(id=pk)
+            if str(delete_comment.picture_comment) != '':
+                delete_comment.picture_comment.delete()
+            else:
+                pass
+            position_post_delete_comment = int(CommentPost.objects.get(id=pk).position_post_id)
+            delete_comment.delete()
+            del delete_comment,pk
+            return redirect(reverse('join',kwargs={'pk':position_post_delete_comment}))
+        if request.POST.get('btn-back_cmt') is not None:
+            return redirect(reverse('join',kwargs={'pk':CommentPost.objects.get(id=pk).position_post_id}))
+        else:
+            return redirect('profile')
+    else:
+        edit_cmt = CommentPost.objects.get(id=pk)
+        contaxt = {'data_comment':edit_cmt}
+        del edit_cmt
+        return render(request,'manage_cmt.html',contaxt)
 
 @login_required(login_url='login') ## Good Post    
 def goodPost(request,gp):

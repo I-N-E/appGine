@@ -21,6 +21,7 @@ class BlockPost(models.Model):
     title = models.CharField(max_length=100,null=False,blank=False)
     post = models.TextField(null=False,blank=False)
     good_post = models.IntegerField(default=0,null=True,blank=True)
+    picture_post = models.ImageField(upload_to='media_post',null=True,blank=True)
 
     def __str__(self) -> str:
         return f'{self.user_post} : {self.title}'
@@ -31,6 +32,7 @@ class CommentPost(models.Model):
     datetime = models.DateTimeField(auto_now_add=True)
     comment = models.TextField(null=False,blank=False)
     good_comment = models.IntegerField(default=0,null=True,blank=True)
+    picture_comment = models.ImageField(upload_to='media_comment',null=True,blank=True)
 
     def __str__(self) -> str:
         return f'{self.position_post} : {self.user_comment}'

@@ -14,6 +14,7 @@ urlpatterns = [
     path('block',blockPage,name = 'block'),
     path('manage/<int:pk>',manage,name = 'manage'),
     path('join/<int:pk>',joinPost,name = 'join'),
+    path('join/edit/<int:pk>',editComment,name = 'edit_cmt'),
     path('good/<int:gp>',goodPost,name = 'good_post'),
     path('goodcomment/<int:gc>/<int:id>',goodComment,name = 'good_comment'),
 ]

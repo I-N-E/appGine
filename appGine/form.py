@@ -44,12 +44,16 @@ class Formdatauser(ModelForm):
 class FormPost(ModelForm):
     class Meta:
         model = BlockPost
-        fields = ['title','post']
+        fields = ['title','post','picture_post']
         widgets = {
             'title':forms.TextInput(attrs={
                 'id':'createPost_head'
             }),
             'post':forms.Textarea(attrs={
                 'id':'createPost_body',  
+            }),
+            'picture_post':forms.FileInput(attrs={
+                'onchange':'submit',
+                'style':'width: 520px;'
             })
         }
