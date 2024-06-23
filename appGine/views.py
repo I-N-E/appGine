@@ -77,7 +77,26 @@ def loginPage(request): ## Login Gine
         return render(request,'login_page.html')
 
 @login_required(login_url='login')
-def profilePage(request):  ## Profile User
+def viewProfile(request):
+    if request.method == 'POST':
+        if request.POST.get('manage_profile') is not None:
+            return redirect('profile/manage')
+        if request.POST.get('public_block') is not None:
+            return redirect('block')
+        if request.POST.get('logout_gine') is not None:
+            logout(request=request)
+            return redirect('login')
+        else:
+            return redirect('profile')
+    else:
+        userGine = User.objects.get(id=request.user.id)
+        data_userGine = DataUser.objects.get(user_id=request.user.id)
+        contaxt = {'user':userGine,'datauser':data_userGine}
+        del data_userGine,userGine
+        return render(request,'view_profile.html',contaxt)
+
+@login_required(login_url='login')
+def manageProfile(request):  ## Profile User
     if request.method == 'POST':
         if request.POST.get('save-profile') is not None: ## update Data User
             update = User.objects.get(id=request.user.id)
@@ -103,10 +122,9 @@ def profilePage(request):  ## Profile User
             data.save()
             del data,update
             messages.success(request,'Profile Update Successfully')
+            return redirect('/profile/manage')
+        if request.POST.get('view-profile') is not None: ## Logout
             return redirect('profile')
-        if request.POST.get('logout-profile') is not None: ## Logout
-            logout(request=request)
-            return redirect('login')
         if request.POST.get('btn-createblock') is not None:  ## Create Block Post
             user_ = User.objects.get(username=request.user)
             formpost = FormPost(request.POST)
@@ -119,12 +137,12 @@ def profilePage(request):  ## Profile User
                     post.save()
                 messages.success(request,'Post Content Successfully')
                 del user_,formpost,post
-                return redirect('profile')
+                return redirect('/profile/manage')
             else:
                 del user_,formpost
-                return redirect('profile')
+                return redirect('/profile/manage')
         else:
-            return redirect('profile')
+            return redirect('/profile/manage')
     else:
         user = User.objects.get(username=request.user)
         form = FormUser(instance=user)
@@ -138,7 +156,7 @@ def profilePage(request):  ## Profile User
         count_comment =  CommentPost.objects.all().values('position_post_id')
         contaxt = {'form':form,'img':img,'form2':form2,'form3':form3,'manage':post_manage,'value':post_value,'cmt':count_comment}
         del user_id,data,form,img,form2,form3,post_manage,post_value,user,count_comment
-        return render(request,'profile_page.html',contaxt)
+        return render(request,'manage_profile.html',contaxt)
     
 @login_required(login_url='login')
 def blockPage(request):  ## Block Public
@@ -161,7 +179,7 @@ def blockPage(request):  ## Block Public
         return render(request,'block_page.html',contaxt)
 
 @login_required(login_url='login') ## Manage Post
-def manage(request,pk):
+def managePost(request,pk):
     if request.method == 'POST':
         if request.POST.get('btn-edit') is not None:
             edit = FormPost(request.POST)
@@ -177,17 +195,18 @@ def manage(request,pk):
                 new_edit.save()
                 del new_edit,edit,pk
                 messages.success(request,'Update Post Complete')
-                return redirect('profile')
+                return redirect('/profile/manage')
             else:
                 return redirect(reverse('manage',kwargs={'pk':pk})) 
         if request.POST.get('btn-delete') is not None:
             delete_post = BlockPost.objects.get(id=pk)
             delete_post.delete()
+            messages.success(request,f'Delete Post ID:{pk} Complete')
             del delete_post,pk
-            return redirect('profile')
+            return redirect('/profile/manage')
         if request.POST.get('btn-back') is not None:
             del pk
-            return redirect('profile')
+            return redirect('/profile/manage')
         else:
             return redirect(reverse('manage',kwargs={'pk':pk}))
     else:
